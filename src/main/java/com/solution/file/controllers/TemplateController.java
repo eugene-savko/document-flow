@@ -1,6 +1,7 @@
 package com.solution.file.controllers;
 
 import com.mongodb.gridfs.GridFSDBFile;
+import com.solution.file.services.FileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,16 +15,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/template")
 public class TemplateController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TemplateController.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TemplateController.class);
 
     @Autowired
     private GridFsOperations gridFsTemplate;
+
+    @Autowired
+    private FileService fileService;
 
     @RequestMapping(value = "/get", method = RequestMethod.GET)
     public ResponseEntity get() {
@@ -33,9 +37,9 @@ public class TemplateController {
                 file.writeTo("newpdf.pdf");
             }
         } catch (IOException e) {
-            LOGGER.error(e.getMessage(), e);
+            LOG.error(e.getMessage(), e);
         }
-        LOGGER.info("Get is completed");
+        LOG.info("Get is completed");
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -56,9 +60,9 @@ public class TemplateController {
             InputStream is = new FileInputStream("pdf.pdf");
             gridFsTemplate.store(is, "pdf.pdf", "application/pdf");
         } catch (FileNotFoundException e) {
-            LOGGER.error(e.getMessage(), e);
+            LOG.error(e.getMessage(), e);
         }
-        LOGGER.info("Create is completed");
+        LOG.info("Create is completed");
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -66,8 +70,30 @@ public class TemplateController {
     public ResponseEntity delete() {
         gridFsTemplate.delete(new Query().addCriteria(GridFsCriteria.whereFilename().is("pdf.pdf")));
 
-        LOGGER.info("Delete is completed");
+        LOG.info("Delete is completed");
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/generation", method = RequestMethod.GET)
+    public ResponseEntity generation() {
+        byte [] pdf;
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("blogTitle", "Freemarker Template Demo");
+            map.put("message", "Getting started with Freemarker.<br/>Find a simple Freemarker demo.");
+            List<String> references = new ArrayList<>();
+            references.add("URL One");
+            references.add("URL Two");
+            references.add("URL Three");
+            map.put("references", references);
+
+            pdf = fileService.generationPdf("pdf-template.ftl", map);
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(new ByteArrayInputStream(pdf)));
+    }
 }
