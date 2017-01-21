@@ -1,4 +1,4 @@
-# DocFlow
+# Document Flow
 
 This environment for storing and versioning documents.
 
